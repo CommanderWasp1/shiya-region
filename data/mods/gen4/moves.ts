@@ -27,9 +27,8 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		onHit(target, source) {
 			this.add('-cureteam', source, '[from] move: Aromatherapy');
-			const allies = [...target.side.pokemon, ...target.side.allySide?.pokemon || []];
-			for (const ally of allies) {
-				ally.clearStatus();
+			for (const pokemon of source.side.pokemon) {
+				pokemon.clearStatus();
 			}
 		},
 	},
@@ -88,8 +87,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 1,
 			onModifyAtkPriority: -101,
 			onModifyAtk(atk, pokemon, defender, move) {
-				// https://www.smogon.com/forums/posts/8992145/
-				// this.add('-activate', pokemon, 'move: Beat Up', '[of] ' + move.allies![0].name);
+				this.add('-activate', pokemon, 'move: Beat Up', '[of] ' + move.allies![0].name);
 				this.event.modifier = 1;
 				return move.allies!.shift()!.species.baseStats.atk;
 			},
@@ -248,9 +246,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	crushgrip: {
 		inherit: true,
 		basePowerCallback(pokemon, target) {
-			const bp = Math.floor(target.hp * 120 / target.maxhp) + 1;
-			this.debug('BP for ' + target.hp + '/' + target.maxhp + " HP: " + bp);
-			return bp;
+			return Math.floor(target.hp * 120 / target.maxhp) + 1;
 		},
 	},
 	curse: {
@@ -281,7 +277,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	defog: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	detect: {
 		inherit: true,
@@ -309,7 +305,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	disable: {
 		inherit: true,
 		accuracy: 80,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 		volatileStatus: 'disable',
 		condition: {
 			durationCallback() {
@@ -432,7 +428,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	encore: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 		volatileStatus: 'encore',
 		condition: {
 			durationCallback() {
@@ -450,6 +446,9 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 				}
 				this.effectState.move = target.lastMove.id;
 				this.add('-start', target, 'Encore');
+				if (!this.queue.willMove(target)) {
+					this.effectState.duration++;
+				}
 			},
 			onOverrideAction(pokemon) {
 				return this.effectState.move;
@@ -515,23 +514,23 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	flail: {
 		inherit: true,
 		basePowerCallback(pokemon, target) {
-			const ratio = Math.max(Math.floor(pokemon.hp * 64 / pokemon.maxhp), 1);
-			let bp;
+			const ratio = pokemon.hp * 64 / pokemon.maxhp;
 			if (ratio < 2) {
-				bp = 200;
-			} else if (ratio < 6) {
-				bp = 150;
-			} else if (ratio < 13) {
-				bp = 100;
-			} else if (ratio < 22) {
-				bp = 80;
-			} else if (ratio < 43) {
-				bp = 40;
-			} else {
-				bp = 20;
+				return 200;
 			}
-			this.debug('BP: ' + bp);
-			return bp;
+			if (ratio < 6) {
+				return 150;
+			}
+			if (ratio < 13) {
+				return 100;
+			}
+			if (ratio < 22) {
+				return 80;
+			}
+			if (ratio < 43) {
+				return 40;
+			}
+			return 20;
 		},
 	},
 	flareblitz: {
@@ -540,22 +539,18 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	focuspunch: {
 		inherit: true,
-		priorityChargeCallback() {},
-		beforeTurnCallback(pokemon) {
-			pokemon.addVolatile('focuspunch');
-		},
-		beforeMoveCallback() {},
+		beforeMoveCallback() { },
 		onTry(pokemon) {
-			if (pokemon.volatiles['focuspunch']?.lostFocus) {
+			if (pokemon.volatiles['focuspunch'] && pokemon.volatiles['focuspunch'].lostFocus) {
 				this.attrLastMove('[still]');
 				this.add('cant', pokemon, 'Focus Punch', 'Focus Punch');
-				return null;
+				return false;
 			}
 		},
 	},
 	foresight: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	furycutter: {
 		inherit: true,
@@ -625,17 +620,13 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 5,
 			durationCallback(source, effect) {
 				if (source?.hasAbility('persistent')) {
-					this.add('-activate', source, 'ability: Persistent', '[move] Gravity');
+					this.add('-activate', source, 'ability: Persistent', effect);
 					return 7;
 				}
 				return 5;
 			},
-			onFieldStart(target, source) {
-				if (source?.hasAbility('persistent')) {
-					this.add('-fieldstart', 'move: Gravity', '[persistent]');
-				} else {
-					this.add('-fieldstart', 'move: Gravity');
-				}
+			onFieldStart() {
+				this.add('-fieldstart', 'move: Gravity');
 				for (const pokemon of this.getAllActive()) {
 					let applies = false;
 					if (pokemon.removeVolatile('bounce') || pokemon.removeVolatile('fly')) {
@@ -706,9 +697,8 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		onHit(target, source) {
 			this.add('-activate', source, 'move: Heal Bell');
-			const allies = [...target.side.pokemon, ...target.side.allySide?.pokemon || []];
-			for (const ally of allies) {
-				if (!ally.hasAbility('soundproof')) ally.cureStatus(true);
+			for (const pokemon of source.side.pokemon) {
+				if (!pokemon.hasAbility('soundproof')) pokemon.cureStatus(true);
 			}
 		},
 	},
@@ -719,7 +709,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 5,
 			durationCallback(target, source, effect) {
 				if (source?.hasAbility('persistent')) {
-					this.add('-activate', source, 'ability: Persistent', '[move] Heal Block');
+					this.add('-activate', source, 'ability: Persistent', effect);
 					return 7;
 				}
 				return 5;
@@ -765,7 +755,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			onSwitchIn(target) {
 				if (target.hp > 0) {
 					target.heal(target.maxhp);
-					target.clearStatus();
+					target.setStatus('');
 					this.add('-heal', target, target.getHealth, '[from] move: Healing Wish');
 					target.side.removeSlotCondition(target, 'healingwish');
 					target.lastMove = this.lastMove;
@@ -792,7 +782,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	imprison: {
 		inherit: true,
-		flags: {bypasssub: 1},
+		flags: {authentic: 1},
 		onTryHit(pokemon) {
 			for (const target of pokemon.foes()) {
 				for (const move of pokemon.moves) {
@@ -836,14 +826,10 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	knockoff: {
 		inherit: true,
-		onAfterHit(target, source, move) {
-			if (!target.item || target.itemState.knockedOff) return;
-			if (target.ability === 'multitype') return;
-			const item = target.getItem();
-			if (this.runEvent('TakeItem', target, source, move, item)) {
-				target.itemState.knockedOff = true;
-				this.add('-enditem', target, item.name, '[from] move: Knock Off');
-				this.hint("In Gens 3-4, Knock Off only makes the target's item unusable; it cannot obtain a new item.", true);
+		onAfterHit(target, source) {
+			const item = target.takeItem();
+			if (item) {
+				this.add('-enditem', target, item.name, '[from] move: Knock Off', '[of] ' + source);
 			}
 		},
 	},
@@ -946,7 +932,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 				}
 				if (target.hp > 0) {
 					target.heal(target.maxhp);
-					target.clearStatus();
+					target.setStatus('');
 					for (const moveSlot of target.moveSlots) {
 						moveSlot.pp = moveSlot.maxpp;
 					}
@@ -1048,7 +1034,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	miracleeye: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	mirrormove: {
 		inherit: true,
@@ -1072,7 +1058,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		condition: {
 			duration: 5,
-			onTryBoost(boost, target, source, effect) {
+			onBoost(boost, target, source, effect) {
 				if (effect.effectType === 'Move' && effect.infiltrates && !target.isAlly(source)) return;
 				if (source && target !== source) {
 					let showMsg = false;
@@ -1159,7 +1145,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	odorsleuth: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	outrage: {
 		inherit: true,
@@ -1172,14 +1158,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			if (this.queue.willMove(target)) {
 				return 50;
 			}
-			this.debug('BP doubled');
 			return 100;
-		},
-	},
-	payday: {
-		inherit: true,
-		onHit() {
-			this.add('-fieldactivate', 'move: Pay Day');
 		},
 	},
 	perishsong: {
@@ -1237,36 +1216,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	psychup: {
 		inherit: true,
-		flags: {snatch: 1, bypasssub: 1},
-	},
-	pursuit: {
-		inherit: true,
-		condition: {
-			duration: 1,
-			onBeforeSwitchOut(pokemon) {
-				this.debug('Pursuit start');
-				let alreadyAdded = false;
-				for (const source of this.effectState.sources) {
-					if (!this.queue.cancelMove(source) || !source.hp) continue;
-					if (!alreadyAdded) {
-						this.add('-activate', pokemon, 'move: Pursuit');
-						alreadyAdded = true;
-					}
-					// Run through each action in queue to check if the Pursuit user is supposed to Mega Evolve this turn.
-					// If it is, then Mega Evolve before moving.
-					if (source.canMegaEvo || source.canUltraBurst) {
-						for (const [actionIndex, action] of this.queue.entries()) {
-							if (action.pokemon === source && action.choice === 'megaEvo') {
-								this.actions.runMegaEvo(source);
-								this.queue.list.splice(actionIndex, 1);
-								break;
-							}
-						}
-					}
-					this.actions.runMove('pursuit', source, source.getLocOf(pokemon));
-				}
-			},
-		},
+		flags: {snatch: 1, authentic: 1},
 	},
 	rapidspin: {
 		inherit: true,
@@ -1322,28 +1272,28 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	reversal: {
 		inherit: true,
 		basePowerCallback(pokemon, target) {
-			const ratio = Math.max(Math.floor(pokemon.hp * 64 / pokemon.maxhp), 1);
-			let bp;
+			const ratio = pokemon.hp * 64 / pokemon.maxhp;
 			if (ratio < 2) {
-				bp = 200;
-			} else if (ratio < 6) {
-				bp = 150;
-			} else if (ratio < 13) {
-				bp = 100;
-			} else if (ratio < 22) {
-				bp = 80;
-			} else if (ratio < 43) {
-				bp = 40;
-			} else {
-				bp = 20;
+				return 200;
 			}
-			this.debug('BP: ' + bp);
-			return bp;
+			if (ratio < 6) {
+				return 150;
+			}
+			if (ratio < 13) {
+				return 100;
+			}
+			if (ratio < 22) {
+				return 80;
+			}
+			if (ratio < 43) {
+				return 40;
+			}
+			return 20;
 		},
 	},
 	roar: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, sound: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, sound: 1, authentic: 1},
 	},
 	rockblast: {
 		inherit: true,
@@ -1365,7 +1315,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 5,
 			durationCallback(target, source, effect) {
 				if (source?.hasAbility('persistent')) {
-					this.add('-activate', source, 'ability: Persistent', '[move] Safeguard');
+					this.add('-activate', source, 'ability: Persistent', effect);
 					return 7;
 				}
 				return 5;
@@ -1390,12 +1340,8 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 					return null;
 				}
 			},
-			onSideStart(side, source) {
-				if (source?.hasAbility('persistent')) {
-					this.add('-sidestart', side, 'Safeguard', '[persistent]');
-				} else {
-					this.add('-sidestart', side, 'Safeguard');
-				}
+			onSideStart(side) {
+				this.add('-sidestart', side, 'Safeguard');
 			},
 			onSideResidualOrder: 4,
 			onSideEnd(side) {
@@ -1411,13 +1357,6 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	scaryface: {
 		inherit: true,
 		accuracy: 90,
-	},
-	secretpower: {
-		inherit: true,
-		secondary: {
-			chance: 30,
-			status: 'par',
-		},
 	},
 	sketch: {
 		inherit: true,
@@ -1460,29 +1399,12 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	sleeptalk: {
 		inherit: true,
-		onTryHit(pokemon) {
-			return !pokemon.volatiles['choicelock'] && !pokemon.volatiles['encore'];
-		},
-	},
-	snatch: {
-		inherit: true,
-		condition: {
-			duration: 1,
-			onStart(pokemon) {
-				this.add('-singleturn', pokemon, 'Snatch');
-			},
-			onAnyPrepareHitPriority: -1,
-			onAnyPrepareHit(source, target, move) {
-				const snatchUser = this.effectState.source;
-				if (snatchUser.isSkyDropped()) return;
-				if (!move || move.isZ || move.isMax || !move.flags['snatch']) {
-					return;
-				}
-				snatchUser.removeVolatile('snatch');
-				this.add('-activate', snatchUser, 'move: Snatch', '[of] ' + source);
-				this.actions.useMove(move.id, snatchUser);
-				return null;
-			},
+		beforeMoveCallback(pokemon) {
+			if (pokemon.volatiles['choicelock'] || pokemon.volatiles['encore']) {
+				this.addMove('move', pokemon, 'Sleep Talk');
+				this.add('-fail', pokemon);
+				return true;
+			}
 		},
 	},
 	spikes: {
@@ -1491,7 +1413,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	spite: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	stealthrock: {
 		inherit: true,
@@ -1513,7 +1435,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			},
 			onTryPrimaryHitPriority: -1,
 			onTryPrimaryHit(target, source, move) {
-				if (target === source || move.flags['bypasssub']) {
+				if (target === source || move.flags['authentic']) {
 					return;
 				}
 				let damage = this.actions.getDamage(source, target, move);
@@ -1598,17 +1520,13 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 3,
 			durationCallback(target, source, effect) {
 				if (source?.hasAbility('persistent')) {
-					this.add('-activate', source, 'ability: Persistent', '[move] Tailwind');
+					this.add('-activate', source, 'ability: Persistent', effect);
 					return 5;
 				}
 				return 3;
 			},
-			onSideStart(side, source) {
-				if (source?.hasAbility('persistent')) {
-					this.add('-sidestart', side, 'move: Tailwind', '[persistent]');
-				} else {
-					this.add('-sidestart', side, 'move: Tailwind');
-				}
+			onSideStart(side) {
+				this.add('-sidestart', side, 'move: Tailwind');
 			},
 			onModifySpe(spe) {
 				return spe * 2;
@@ -1621,7 +1539,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	taunt: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 		condition: {
 			durationCallback() {
 				return this.random(3, 6);
@@ -1658,7 +1576,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	torment: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	toxic: {
 		inherit: true,
@@ -1678,7 +1596,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 				this.add('-sidestart', side, 'move: Toxic Spikes');
 				this.effectState.layers++;
 			},
-			onEntryHazard(pokemon) {
+			onSwitchIn(pokemon) {
 				if (!pokemon.isGrounded()) return;
 				if (pokemon.hasType('Poison')) {
 					this.add('-sideend', pokemon.side, 'move: Toxic Spikes', '[of] ' + pokemon);
@@ -1695,7 +1613,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	transform: {
 		inherit: true,
-		flags: {bypasssub: 1},
+		flags: {authentic: 1},
 	},
 	trick: {
 		inherit: true,
@@ -1709,17 +1627,13 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			duration: 5,
 			durationCallback(source, effect) {
 				if (source?.hasAbility('persistent')) {
-					this.add('-activate', source, 'ability: Persistent', '[move] Trick Room');
+					this.add('-activate', source, 'ability: Persistent', effect);
 					return 7;
 				}
 				return 5;
 			},
 			onFieldStart(target, source) {
-				if (source?.hasAbility('persistent')) {
-					this.add('-fieldstart', 'move: Trick Room', '[of] ' + source, '[persistent]');
-				} else {
-					this.add('-fieldstart', 'move: Trick Room', '[of] ' + source);
-				}
+				this.add('-fieldstart', 'move: Trick Room', '[of] ' + source);
 			},
 			onFieldRestart(target, source) {
 				this.field.removePseudoWeather('trickroom');
@@ -1735,10 +1649,9 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		basePower: 50,
 		condition: {
+			duration: 3,
 			onStart(target) {
 				this.add('-start', target, 'Uproar');
-				// 3-6 turns
-				this.effectState.duration = this.random(3, 7);
 			},
 			onResidual(target) {
 				if (target.volatiles['throatchop']) {
@@ -1793,7 +1706,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	whirlwind: {
 		inherit: true,
-		flags: {protect: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, mirror: 1, authentic: 1},
 	},
 	wish: {
 		inherit: true,
@@ -1831,9 +1744,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	wringout: {
 		inherit: true,
 		basePowerCallback(pokemon, target) {
-			const bp = Math.floor(target.hp * 120 / target.maxhp) + 1;
-			this.debug('BP for ' + target.hp + '/' + target.maxhp + " HP: " + bp);
-			return bp;
+			return Math.floor(target.hp * 120 / target.maxhp) + 1;
 		},
 	},
 	yawn: {

@@ -10,20 +10,23 @@ describe('Fusion Bolt + Fusion Flare', function () {
 		battle.destroy();
 	});
 
-	it(`should boost the second move if the first was used immediately before it`, function () {
+	it('should boost the second move if the first was used immediately before it', function () {
 		battle = common.createBattle({gameType: 'doubles'}, [[
-			{species: 'Wynaut', moves: ['fusionbolt']},
-			{species: 'Wobbuffet', moves: ['fusionflare']},
+			{species: 'Zekrom', ability: 'teravolt', moves: ['fusionbolt']},
+			{species: 'Reshiram', ability: 'teravolt', moves: ['fusionflare'], evs: {spe: 4}},
 		], [
-			{species: 'Dragonite', item: 'laggingtail', moves: ['roost']},
-			{species: 'Lugia', moves: ['fusionbolt']},
+			{species: 'Dragonite', ability: 'Multiscale', moves: ['roost']},
+			{species: 'Lugia', ability: 'Multiscale', moves: ['fusionbolt']},
 		]]);
+
+		battle.makeChoices();
 
 		const bpModifiers = new Map();
 		battle.onEvent('BasePower', battle.format, -100, function (bp, attacker, defender, move) {
 			bpModifiers.set(move.id, this.event.modifier);
 		});
-		battle.makeChoices('move fusionbolt 1, move fusionflare 1', 'auto');
+		battle.makeChoices('move fusionbolt 1, move fusionflare 1', 'default');
+
 		assert.equal(bpModifiers.get('fusionbolt'), 2);
 		assert.equal(bpModifiers.get('fusionflare'), 2);
 	});

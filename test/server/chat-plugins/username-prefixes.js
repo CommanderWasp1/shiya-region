@@ -5,38 +5,33 @@
 'use strict';
 
 const assert = require('assert').strict;
-const {PrefixManager} = require('../../../dist/server/chat-plugins/username-prefixes');
-const PREFIX_DURATION = 10 * 24 * 60 * 60 * 1000;
+const {PrefixManager} = require('../../../.server-dist/chat-plugins/username-prefixes');
 
-describe('PrefixManager', function () {
+describe('PrefixManager', () => {
 	beforeEach(() => {
 		this.prefixManager = new PrefixManager();
-		Config.forcedprefixes = [];
+		Config.forcedprefixes = {privacy: [], modchat: []};
 	});
 
 	it('Config.forcedprefixes should reflect prefix additions and removals', () => {
 		this.prefixManager.addPrefix('forcedpublic', 'privacy');
 		this.prefixManager.addPrefix('nomodchat', 'modchat');
 
-		assert(Config.forcedprefixes.find(x => x.prefix === 'forcedpublic' && x.type === 'privacy'));
-		assert(Config.forcedprefixes.find(x => x.prefix === 'nomodchat' && x.type === 'modchat'));
+		assert(Config.forcedprefixes.privacy.includes('forcedpublic'));
+		assert(Config.forcedprefixes.modchat.includes('nomodchat'));
 
 		this.prefixManager.removePrefix('forcedpublic', 'privacy');
 		this.prefixManager.removePrefix('nomodchat', 'modchat');
 
-		assert(!Config.forcedprefixes.find(x => x.prefix === 'forcedpublic' && x.type === 'privacy'));
-		assert(!Config.forcedprefixes.find(x => x.prefix === 'nomodchat' && x.type === 'modchat'));
+		assert(!Config.forcedprefixes.privacy.includes('forcedpublic'));
+		assert(!Config.forcedprefixes.modchat.includes('nomodchat'));
 	});
 
 	it('should not overwrite manually specified prefixes', () => {
-		const time = Date.now() + PREFIX_DURATION;
-		Config.forcedprefixes = [{prefix: 'manual', type: 'modchat', expireAt: time}];
+		Config.forcedprefixes.modchat = ['manual'];
 		this.prefixManager.addPrefix('nomodchat', 'modchat');
 
-		assert.deepEqual(Config.forcedprefixes, [
-			{prefix: 'manual', type: 'modchat', expireAt: time},
-			{prefix: 'nomodchat', type: 'modchat', expireAt: Config.forcedprefixes.find(x => x.prefix === 'nomodchat').expireAt},
-		]);
+		assert.deepEqual(Config.forcedprefixes.modchat, ['manual', 'nomodchat']);
 	});
 
 	it('should correctly validate prefix types', () => {

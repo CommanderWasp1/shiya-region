@@ -19,9 +19,8 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		onHit(target, source) {
 			this.add('-activate', source, 'move: Aromatherapy');
-			const allies = [...target.side.pokemon, ...target.side.allySide?.pokemon || []];
-			for (const ally of allies) {
-				ally.cureStatus();
+			for (const pokemon of source.side.pokemon) {
+				pokemon.cureStatus();
 			}
 		},
 	},
@@ -214,7 +213,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		basePowerCallback(pokemon, target) {
 			const ratio = Math.floor(pokemon.getStat('spe') / Math.max(1, target.getStat('spe')));
 			const bp = [40, 60, 80, 120, 150][Math.min(ratio, 4)];
-			this.debug('BP: ' + bp);
+			this.debug(`${bp} bp`);
 			return bp;
 		},
 	},
@@ -344,7 +343,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		basePowerCallback(pokemon, target) {
 			let power = Math.floor(25 * target.getStat('spe') / Math.max(1, pokemon.getStat('spe'))) + 1;
 			if (power > 150) power = 150;
-			this.debug('BP: ' + power);
+			this.debug(`${power} bp`);
 			return power;
 		},
 	},
@@ -353,9 +352,8 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		flags: {snatch: 1, sound: 1},
 		onHit(target, source) {
 			this.add('-activate', source, 'move: Heal Bell');
-			const allies = [...target.side.pokemon, ...target.side.allySide?.pokemon || []];
-			for (const ally of allies) {
-				ally.cureStatus();
+			for (const pokemon of source.side.pokemon) {
+				pokemon.cureStatus();
 			}
 		},
 	},
@@ -376,9 +374,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 		inherit: true,
 		basePower: 0,
 		basePowerCallback(pokemon) {
-			const bp = pokemon.hpPower || 70;
-			this.debug('BP: ' + bp);
-			return bp;
+			return pokemon.hpPower || 70;
 		},
 	},
 	hiddenpowerbug: {
@@ -729,7 +725,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	roar: {
 		inherit: true,
 		accuracy: 100,
-		flags: {protect: 1, reflectable: 1, mirror: 1, sound: 1, bypasssub: 1},
+		flags: {protect: 1, reflectable: 1, mirror: 1, sound: 1, authentic: 1},
 	},
 	rocktomb: {
 		inherit: true,
@@ -755,10 +751,13 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	},
 	secretpower: {
 		inherit: true,
-		secondary: {
-			chance: 30,
-			boosts: {
-				accuracy: -1,
+		condition: {
+			duration: 1,
+			onAfterMoveSecondarySelf(source, target, move) {
+				if (this.randomChance(3, 10)) {
+					this.boost({accuracy: -1}, target, source);
+				}
+				source.removeVolatile('secretpower');
 			},
 		},
 	},
@@ -872,7 +871,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 			},
 			onTryPrimaryHitPriority: -1,
 			onTryPrimaryHit(target, source, move) {
-				if (target === source || move.flags['bypasssub']) {
+				if (target === source || move.flags['authentic']) {
 					return;
 				}
 				let damage = this.actions.getDamage(source, target, move);
@@ -1021,7 +1020,7 @@ export const Moves: {[k: string]: ModdedMoveData} = {
 	whirlwind: {
 		inherit: true,
 		accuracy: 100,
-		flags: {protect: 1, reflectable: 1, mirror: 1, bypasssub: 1},
+		flags: {protect: 1, reflectable: 1, mirror: 1, authentic: 1},
 	},
 	wideguard: {
 		inherit: true,

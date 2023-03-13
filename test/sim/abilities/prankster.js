@@ -79,14 +79,11 @@ describe('Prankster [Gen 6]', function () {
 		battle.destroy();
 	});
 
-	it(`should not cause Status moves to fail against Dark Pokémon`, function () {
-		battle = common.gen(6).createBattle([[
-			{species: 'Sableye', ability: 'prankster', moves: ['willowisp']},
-		], [
-			{species: 'Sableye', ability: 'noguard', moves: ['willowisp']},
-		]]);
-		battle.makeChoices();
-		assert.equal(battle.p1.active[0].status, 'brn');
-		assert.equal(battle.p2.active[0].status, 'brn');
+	it('should not cause Status moves to fail against Dark Pokémon', function () {
+		battle = common.gen(6).createBattle([
+			[{species: "Sableye", ability: 'prankster', moves: ['willowisp']}],
+			[{species: "Sableye", ability: 'keeneye', moves: ['willowisp']}],
+		]);
+		assert.sets(() => battle.p2.active[0].status, 'brn', () => battle.makeChoices('move willowisp', 'move willowisp'));
 	});
 });

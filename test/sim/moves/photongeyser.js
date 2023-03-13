@@ -35,7 +35,7 @@ describe(`Photon Geyser`, function () {
 	});
 
 	it(`should always be a special Max Move, never physical`, function () {
-		battle = common.gen(8).createBattle([[
+		battle = common.createBattle([[
 			{species: 'conkeldurr', moves: ['photongeyser']},
 		], [
 			{species: 'cresselia', item: 'marangaberry', moves: ['sleeptalk']},

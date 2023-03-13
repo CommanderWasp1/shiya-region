@@ -56,8 +56,7 @@ describe('Flower Gift', function () {
 	});
 
 	it(`should not trigger if the Pokemon was KOed`, function () {
-		// TODO: Is this interaction possible in Gen 9?
-		battle = common.gen(8).createBattle([[
+		battle = common.createBattle([[
 			{species: 'Cherrim', ability: 'flowergift', moves: ['sleeptalk']},
 		], [
 			{species: 'Heatran', moves: ['blastburn']},

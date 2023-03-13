@@ -43,7 +43,7 @@ describe('Shell Trap', function () {
 	});
 
 	it('should not Max if hit by a Max move', function () {
-		battle = common.gen(8).createBattle({}, [
+		battle = common.createBattle({}, [
 			[{species: 'Turtonator', moves: ['shelltrap']}],
 			[{species: 'Magikarp', moves: ['flail']}],
 		]);
